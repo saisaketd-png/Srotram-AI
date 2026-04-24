@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AegisVoice | Intelligence Engine</title>
+  <meta name="description" content="Real-time AI voice clone detection. Privacy-first edge AI."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div class="bg-beams"></div>
+  <div class="grid-bg"></div>
+
+  <!-- HEADER -->
+  <header id="header">
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon">A</div>
+        <div><h1>AegisVoice</h1><p class="subtitle">Intelligence Engine v1.0</p></div>
+      </div>
+      <div class="header-controls">
+        <div class="status-badge" id="connStatus"><span class="dot dot-red"></span><span>DISCONNECTED</span></div>
+        <button class="btn btn-ghost" id="tabMonitor" onclick="switchTab('monitor')">📡 Monitor</button>
+        <button class="btn btn-ghost" id="tabPrivacy" onclick="switchTab('privacy')">🔒 Privacy</button>
+        <button class="btn btn-demo" id="demoBtn" onclick="toggleDemo()">DEMO</button>
+        <button class="btn btn-primary" id="recordBtn" onclick="toggleRecording()">🎙 Analyze</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MONITOR TAB -->
+  <main id="monitorTab" class="dashboard">
+    <!-- LEFT COL -->
+    <div class="col-left">
+      <!-- SHIELD HUB -->
+      <div class="panel glow-green" id="shieldPanel">
+        <div class="panel-header"><span class="panel-title">Multi-Layer Shield</span><span class="panel-hint">LIVE</span></div>
+        <div class="shield-center">
+          <svg viewBox="0 0 220 220" class="shield-svg">
+            <circle cx="110" cy="110" r="90" fill="none" stroke="#1e293b" stroke-width="8"/>
+            <circle id="shieldRing" cx="110" cy="110" r="90" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-dasharray="565.48" stroke-dashoffset="565.48" class="shield-ring"/>
+            <circle cx="110" cy="110" r="102" fill="none" stroke="#22c55e" stroke-width="1" opacity="0.3" stroke-dasharray="8 12" class="shield-outer"/>
+          </svg>
+          <div class="shield-text">
+            <span class="shield-score" id="riskScore">0</span>
+            <span class="shield-label">FRAUD RISK %</span>
+          </div>
+        </div>
+        <div class="layer-bars" id="layerBars">
+          <div class="layer-row"><span>🔊 Voice Anomaly</span><div class="bar-track"><div class="bar-fill" id="barAcoustic"></div></div><span class="bar-val" id="valAcoustic">0%</span></div>
+          <div class="layer-row"><span>🧠 Behavioral</span><div class="bar-track"><div class="bar-fill" id="barBehavioral"></div></div><span class="bar-val" id="valBehavioral">0%</span></div>
+          <div class="layer-row"><span>💬 Language</span><div class="bar-track"><div class="bar-fill" id="barNlp"></div></div><span class="bar-val" id="valNlp">0%</span></div>
+          <div class="layer-row"><span>📡 Network</span><div class="bar-track"><div class="bar-fill" id="barNetwork"></div></div><span class="bar-val" id="valNetwork">0%</span></div>
+        </div>
+      </div>
+
+      <!-- SPECTROGRAM -->
+      <div class="panel" id="spectroPanel">
+        <div class="panel-header"><span class="panel-title">Live Spectrogram</span><span class="panel-hint" id="spectroStatus">IDLE</span></div>
+        <div class="spectro-bars" id="spectroBars"></div>
+        <div class="level-row"><span>Level</span><div class="bar-track"><div class="bar-fill bar-green" id="audioLevelBar"></div></div><span class="bar-val" id="audioLevelVal">0%</span></div>
+      </div>
+
+      <!-- EMOTION -->
+      <div class="panel" id="emotionPanel">
+        <div class="panel-header"><span class="panel-title">Emotional Drift</span></div>
+        <div class="emotion-row">
+          <div class="emotion-icon" id="emotionIcon">😐</div>
+          <div><p class="emotion-label" id="emotionLabel">neutral</p><p class="emotion-drift" id="emotionDrift">Drift: 0%</p></div>
+          <span class="flat-badge hidden" id="flatBadge">FLAT</span>
+        </div>
+        <div class="emotion-history" id="emotionHistory"></div>
+      </div>
+    </div>
+
+    <!-- CENTER COL -->
+    <div class="col-center">
+      <!-- INTEL FEED -->
+      <div class="panel panel-tall" id="intelPanel">
+        <div class="panel-header"><span class="panel-title">Intelligence Feed</span><span class="panel-hint" id="eventCount">0 events</span></div>
+        <div class="feed-scroll" id="intelFeed"><div class="feed-empty">Awaiting audio stream...</div></div>
+      </div>
+
+      <!-- XAI REPORT -->
+      <div class="panel" id="xaiPanel">
+        <div class="panel-header"><span class="panel-title">🧪 XAI Report</span></div>
+        <p class="xai-text" id="xaiText">No analysis data yet.</p>
+        <p class="xai-meta" id="xaiMeta"></p>
+      </div>
+
+      <!-- STATS BAR -->
+      <div class="panel panel-stats" id="statsBar">
+        <span>Chunks: <b id="statChunks">0</b></span>
+        <span>Buffer: <b id="statBuffer">0</b>/4</span>
+        <span>Bytes: <b id="statBytes">0</b> KB</span>
+        <span>Session: <b id="statSession">—</b></span>
+      </div>
+    </div>
+
+    <!-- RIGHT COL -->
+    <div class="col-right">
+      <!-- CHALLENGE RESPONSE -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">🎯 Challenge-Response</span><span class="panel-hint challenge-timer hidden" id="challengeTimer">0.0s</span></div>
+        <p class="challenge-desc">Generate a random phrase for the caller. Measures response latency to detect AI processing delay.</p>
+        <div class="challenge-phrase hidden" id="challengePhrase"><p class="phrase-label">Ask caller to say:</p><p class="phrase-text" id="phraseText"></p></div>
+        <div class="challenge-btns">
+          <button class="btn btn-green" id="genPhraseBtn" onclick="generateChallenge()">Generate Phrase</button>
+          <button class="btn btn-amber hidden" id="respondBtn" onclick="submitResponse()">Caller Responded ✓</button>
+        </div>
+        <div class="challenge-result hidden" id="challengeResult">
+          <span class="cr-assessment" id="crAssessment"></span>
+          <span class="cr-latency" id="crLatency"></span>
+          <p class="cr-desc" id="crDesc"></p>
+        </div>
+      </div>
+
+      <!-- HARDWARE TELEMETRY -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Hardware Telemetry</span><div class="gpu-status" id="gpuStatus"><span class="dot dot-red"></span><span>OFFLINE</span></div></div>
+        <div class="gpu-badge" id="gpuBadge">
+          <div class="gpu-name">⚡ GPU Accelerated: <b id="gpuName">RTX 3040</b></div>
+          <div class="gpu-stats">
+            <div class="gpu-stat"><span class="gpu-val" id="gpuVram">0%</span><span>VRAM</span></div>
+            <div class="gpu-stat"><span class="gpu-val" id="gpuUtil">0%</span><span>UTIL</span></div>
+            <div class="gpu-stat"><span class="gpu-val" id="gpuTemp">--°C</span><span>TEMP</span></div>
+          </div>
+        </div>
+        <div class="sparkline-section">
+          <div class="sparkline-header"><span>Inference Latency</span><span id="latencyVal">0ms</span></div>
+          <div class="sparkline" id="sparkline"></div>
+          <div class="sparkline-footer"><span>Target: &lt;250ms</span><span id="inferenceCount">0 inferences</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- PRIVACY TAB -->
+  <div id="privacyTab" class="privacy-page hidden">
+    <div class="panel privacy-panel">
+      <div class="panel-header"><span class="panel-title">🔒 Privacy Dashboard</span><span class="privacy-badge">100% LOCAL</span></div>
+      <p class="privacy-desc">All processing happens on-device. Zero external API calls. No ElevenLabs, No OpenAI, No cloud.</p>
+      <div class="data-flows" id="dataFlows"></div>
+      <div class="data-retention"><span>🗑️ Data Retention:</span><span class="retention-val">Session-only (RAM)</span><span>• No disk writes • No logs shipped</span></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
