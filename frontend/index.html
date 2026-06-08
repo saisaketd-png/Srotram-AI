@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Srotram AI // Voice Intelligence Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <!-- BACKGROUND BEAMS -->
+  <div class="beams" aria-hidden="true">
+    <div class="beam beam-1"></div><div class="beam beam-2"></div>
+    <div class="beam beam-3"></div><div class="beam beam-4"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="hdr-left">
+      <div class="logo-mark">S</div>
+      <div>
+        <div class="logo-title">SROTRAM AI</div>
+        <div class="logo-sub">VOICE INTELLIGENCE PLATFORM // EDGE AI</div>
+      </div>
+    </div>
+    <div class="hdr-center">
+      <div class="hdr-stat"><span class="hdr-stat-val" id="statChunks">0</span><span class="hdr-stat-lbl">CHUNKS</span></div>
+      <div class="hdr-sep"></div>
+      <div class="hdr-stat"><span class="hdr-stat-val" id="statBytes">0</span><span class="hdr-stat-lbl">KB</span></div>
+      <div class="hdr-sep"></div>
+      <div class="hdr-stat"><span class="hdr-stat-val" id="statSession">—</span><span class="hdr-stat-lbl">SESSION</span></div>
+    </div>
+    <div class="hdr-right">
+      <div class="conn-badge" id="connStatus"><span class="conn-dot"></span><span>OFFLINE</span></div>
+      <button class="hdr-btn" id="tabMonitor" onclick="switchTab('monitor')">MONITOR</button>
+      <button class="hdr-btn" id="tabPrivacy" onclick="switchTab('privacy')">PRIVACY</button>
+
+      <button class="hdr-btn theme-btn" onclick="toggleTheme()">☀</button>
+      <input type="file" id="audioUpload" accept="audio/*" style="display:none;" onchange="handleFileUpload(event)">
+      <button class="hdr-btn" id="uploadBtn" onclick="document.getElementById('audioUpload').click()" style="border: 1px solid var(--cyan); color: var(--cyan);">
+        <span class="rec-icon" style="color:var(--cyan)">⬆</span> UPLOAD FILE
+      </button>
+      <button class="rec-btn" id="recordBtn" onclick="toggleRecording()">
+        <span class="rec-icon">●</span> ANALYZE
+      </button>
+    </div>
+  </header>
+
+  <!-- MONITOR VIEW -->
+  <main id="monitorTab">
+
+    <!-- ═══ LEFT COLUMN ═══ -->
+    <aside class="col-left">
+
+      <!-- TRUST GAUGE -->
+      <div class="card gauge-card" id="shieldPanel">
+        <div class="card-label">MULTI-LAYER THREAT ANALYSIS <span class="threat-badge" id="threatBadge">SAFE</span></div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 200 200">
+            <defs>
+              <filter id="glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <!-- Track -->
+            <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(0,255,136,0.08)" stroke-width="12"/>
+            <!-- Fill ring -->
+            <circle id="gaugeRing" cx="100" cy="100" r="80" fill="none" stroke="#00FF88"
+              stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="502.65" stroke-dashoffset="502.65"
+              transform="rotate(-90 100 100)" filter="url(#glow)"/>
+            <!-- Outer decorative -->
+            <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(0,255,136,0.05)" stroke-width="1" stroke-dasharray="4 8"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-score" id="riskScore">0</div>
+            <div class="gauge-lbl">RISK SCORE</div>
+          </div>
+        </div>
+        <div class="layer-list">
+          <div class="layer-item"><span class="li-dot" style="background:#00FF88"></span><span>Acoustic</span><div class="li-bar"><div class="li-fill" id="barAcoustic"></div></div><span class="li-val" id="valAcoustic">0%</span></div>
+          <div class="layer-item"><span class="li-dot" style="background:#38BDF8"></span><span>Behavioral</span><div class="li-bar"><div class="li-fill" id="barBehavioral" style="background:#38BDF8"></div></div><span class="li-val" id="valBehavioral">0%</span></div>
+          <div class="layer-item"><span class="li-dot" style="background:#A78BFA"></span><span>Language</span><div class="li-bar"><div class="li-fill" id="barNlp" style="background:#A78BFA"></div></div><span class="li-val" id="valNlp">0%</span></div>
+          <div class="layer-item"><span class="li-dot" style="background:#F59E0B"></span><span>Fingerprint</span><div class="li-bar"><div class="li-fill" id="barNetwork" style="background:#F59E0B"></div></div><span class="li-val" id="valNetwork">0%</span></div>
+        </div>
+      </div>
+
+      <!-- SPECTROGRAM -->
+      <div class="card spectro-card">
+        <div class="card-label">LIVE SPECTROGRAM <span class="badge-live" id="spectroStatus">IDLE</span></div>
+        <div class="spectro-canvas" id="spectroBars"></div>
+        <div class="level-row"><span>Level</span><div class="level-track"><div id="audioLevelBar" class="level-fill"></div></div><span id="audioLevelVal">0%</span></div>
+      </div>
+
+      <!-- EMOTION -->
+      <div class="card emotion-card">
+        <div class="card-label">EMOTIONAL DRIFT</div>
+        <div class="emo-row">
+          <div class="emo-face" id="emotionIcon">😐</div>
+          <div>
+            <div class="emo-label" id="emotionLabel">neutral</div>
+            <div class="emo-drift" id="emotionDrift">Drift: 0%</div>
+          </div>
+          <span class="flat-tag hidden" id="flatBadge">FLAT</span>
+        </div>
+        <div class="emo-hist" id="emotionHistory"></div>
+      </div>
+    </aside>
+
+    <!-- ═══ CENTER COLUMN ═══ -->
+    <section class="col-center">
+
+      <!-- LIVE ANALYSIS FEED -->
+      <div class="card feed-card">
+        <div class="card-label">LIVE THREAT INTEL <span class="badge-live pulse-green">● LIVE</span> <span class="feed-count" id="eventCount">0 events</span></div>
+        <div class="feed-scroll" id="intelFeed"><div class="feed-empty">Awaiting audio stream...</div></div>
+      </div>
+
+      <!-- TRANSCRIPT -->
+      <div class="card transcript-card">
+        <div class="card-label">LIVE TRANSCRIPT <span class="stt-badge" id="sttStatus">IDLE</span></div>
+        <div id="interimLine" class="interim-line hidden"></div>
+        <div class="tx-scroll" id="transcriptFeed"><div class="feed-empty">Start recording for live transcript...</div></div>
+        <div class="flag-bar hidden" id="transcriptFlags">
+          <span class="flag-icon">⚠</span>
+          <span id="flaggedPhrases"></span>
+        </div>
+      </div>
+
+      <!-- NLP INTENT -->
+      <div class="card nlp-card">
+        <div class="card-label">NLP SCAM INTENT <span class="intent-level" id="nlpIntentLevel">LOW</span></div>
+        <div class="intent-grid">
+          <div class="intent-cell"><div class="ic-icon">⏰</div><div class="ic-name">Urgency</div><div class="ic-count" id="intent-urgency">0</div></div>
+          <div class="intent-cell"><div class="ic-icon">💰</div><div class="ic-name">Financial</div><div class="ic-count" id="intent-financial">0</div></div>
+          <div class="intent-cell"><div class="ic-icon">🏛</div><div class="ic-name">Authority</div><div class="ic-count" id="intent-authority">0</div></div>
+          <div class="intent-cell"><div class="ic-icon">⚠</div><div class="ic-name">Threats</div><div class="ic-count" id="intent-threats">0</div></div>
+          <div class="intent-cell"><div class="ic-icon">🔓</div><div class="ic-name">Personal</div><div class="ic-count" id="intent-personal">0</div></div>
+        </div>
+        <div class="intent-footer">Total Flags: <b id="nlpIntentCount">0</b></div>
+      </div>
+    </section>
+
+    <!-- ═══ RIGHT COLUMN ═══ -->
+    <aside class="col-right">
+
+      <!-- XAI EXPLAINABILITY -->
+      <div class="card xai-card">
+        <div class="card-label">XAI EXPLAINABILITY <span class="xai-status" id="xaiStatus">WAITING</span></div>
+        <div class="xai-report" id="xaiText">Run analysis to see AI reasoning...</div>
+        <div class="xai-metrics hidden" id="xaiMetrics">
+          <div class="xm"><div class="xm-val" id="xmInference">—</div><div class="xm-lbl">INFERENCE</div></div>
+          <div class="xm"><div class="xm-val" id="xmAudio">—</div><div class="xm-lbl">AUDIO</div></div>
+          <div class="xm"><div class="xm-val" id="xmModel">—</div><div class="xm-lbl">MODEL</div></div>
+        </div>
+        <div class="spark-section">
+          <div class="spark-hdr"><span>Packet Jitter / Latency</span><span id="latencyVal">0ms</span></div>
+          <div class="sparkline" id="sparkline"></div>
+          <div class="spark-ftr"><span>Target: &lt;250ms</span><span id="inferenceCount">0 inferences</span></div>
+        </div>
+      </div>
+
+      <!-- CHALLENGE-RESPONSE -->
+      <div class="card challenge-card">
+        <div class="card-label">CHALLENGE-RESPONSE <span class="timer hidden" id="challengeTimer">0.0s</span></div>
+        <p class="challenge-desc">Ask the caller a natural question. AI systems show measurable response latency.</p>
+        <div class="phrase-box hidden" id="challengePhrase">
+          <div class="phrase-label">Say to caller:</div>
+          <div class="phrase-text" id="phraseText"></div>
+        </div>
+        <div class="challenge-btns">
+          <button class="c-btn c-btn-green" id="genPhraseBtn" onclick="generateChallenge()">Generate Question</button>
+          <button class="c-btn c-btn-amber hidden" id="respondBtn" onclick="submitResponse()">Caller Responded ✓</button>
+        </div>
+        <div class="c-result hidden" id="challengeResult">
+          <div class="cr-top"><span class="cr-assess" id="crAssessment"></span><span class="cr-lat" id="crLatency"></span></div>
+          <div class="cr-desc" id="crDesc"></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- PRIVACY VIEW -->
+  <div id="privacyTab" class="privacy-view hidden">
+    <div class="card privacy-card">
+      <div class="card-label">PRIVACY DASHBOARD <span style="color:#00FF88;font-size:10px">100% LOCAL PROCESSING</span></div>
+      <p style="font-size:12px;color:#7A8FA6;margin:10px 0 16px;line-height:1.6">All analysis runs on your device. No audio leaves your machine. No cloud APIs. No external dependencies.</p>
+      <div id="dataFlows"></div>
+      <div class="priv-footer">Data retention: Session RAM only • No disk writes • No logs shipped</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

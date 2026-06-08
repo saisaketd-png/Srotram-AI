@@ -1,0 +1,52 @@
+services:
+  ai-engine:
+    image: pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+    container_name: srotram-ai-engine
+    working_dir: /workspace/ai-engine
+    command: >
+      bash -lc "pip install --no-cache-dir -r requirements.txt &&
+      python main.py"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai-engine:/workspace/ai-engine
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONUNBUFFERED=1
+    gpus: all
+    restart: unless-stopped
+
+  gateway:
+    image: node:20-bullseye
+    container_name: srotram-gateway
+    working_dir: /workspace/gateway
+    command: >
+      bash -lc "npm install && npm run dev"
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./gateway:/workspace/gateway
+    environment:
+      - GATEWAY_PORT=4000
+      - AI_ENGINE_URL=http://ai-engine:8000
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+    depends_on:
+      - ai-engine
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-bullseye
+    container_name: srotram-frontend
+    working_dir: /workspace/frontend
+    command: >
+      bash -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/workspace/frontend
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - gateway
+    restart: unless-stopped
